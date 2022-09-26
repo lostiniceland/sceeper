@@ -1,0 +1,3 @@
+= Sceeper
+
+Minesweeper written in Scala 3, hence the name **Sc**ala-Minesw**eeper* 
