@@ -1,0 +1,42 @@
+.board {
+    -fx-padding: 5;
+}
+
+.water {
+    -fx-background-image:
+        url(tile-unopened.png);
+    -fx-background-size: 40px;
+    -fx-background-repeat: no-repeat;
+    -fx-background-position: 100%;
+    -fx-pref-width: 40;
+    -fx-pref-height: 40;
+    -fx-font-size: 1.5em;
+    -fx-font-weight: bold;
+}
+
+.water:empty {
+    -fx-background-image: none;
+}
+
+
+.water:flagged {
+    -fx-background-image:
+        url(tile-flag.png);
+    -fx-background-size: 40px;
+    -fx-background-repeat: no-repeat;
+}
+
+.water:mine{
+    -fx-background-image:
+        url(tile-mine.png);
+    -fx-background-size: 40px;
+    -fx-background-repeat: no-repeat;
+}
+
+.water:correct{
+    -fx-background-color: green;
+}
+
+.water:wrong{
+    -fx-background-color: red;
+}

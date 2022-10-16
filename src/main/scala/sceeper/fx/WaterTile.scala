@@ -1,16 +1,29 @@
 package sceeper.fx
 
+import javafx.css.PseudoClass
+import javafx.scene.image.ImageView
 import scalafx.Includes.*
 import scalafx.scene.control.ToggleButton
 import sceeper.Location
 
 private [fx] class WaterTile(val location: Location) extends ToggleButton {
 
+  private var flagged = false
+
+  private val minePseudo = PseudoClass.getPseudoClass("mine")
+  private val flaggedPseudo = PseudoClass.getPseudoClass("flagged")
+  private val emptyPseudo = PseudoClass.getPseudoClass("empty")
+  private val correctPseudo = PseudoClass.getPseudoClass("correct")
+  private val wrongPseudo = PseudoClass.getPseudoClass("wrong")
+  styleClass.add("water")
+
   private[fx] def flag(): Unit =
-    style = "-fx-background-color: yellow"
+    flagged = true
+    this.pseudoClassStateChanged(flaggedPseudo, flagged)
 
   private[fx] def unflag(): Unit =
-    style = ""
+    flagged = false
+    this.pseudoClassStateChanged(flaggedPseudo, flagged)
 
   private[fx] def opened(proximityMines: Int): Unit =
     selected = true
@@ -19,9 +32,24 @@ private [fx] class WaterTile(val location: Location) extends ToggleButton {
       case 2 => "-fx-text-fill: yellow"
       case 0|1 => "-fx-text-fill: blue"
     }
-    text = proximityMines.toString
+    if proximityMines != 0 then
+      text = proximityMines.toString
+    else
+      this.pseudoClassStateChanged(emptyPseudo, true)
     disarm()
 
+  /**
+   * Displays this tile as a mine
+   */
   private[fx] def mine(): Unit =
-    style = "-fx-background-color: red"
+    if (flagged)
+      this.pseudoClassStateChanged(correctPseudo, true)
+    this.pseudoClassStateChanged(minePseudo, true)
+
+  /**
+   * Displays this tile as the mine that failed the game
+   */
+  private[fx] def triggeredMine(): Unit =
+    this.pseudoClassStateChanged(minePseudo, true)
+    this.pseudoClassStateChanged(wrongPseudo, true)
 }

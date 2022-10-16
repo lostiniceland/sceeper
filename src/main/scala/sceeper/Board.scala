@@ -8,6 +8,14 @@ sealed trait Field
 case class WaterField(proximityMines: Int, location: Location) extends Field
 case object MineField extends Field
 
+/**
+ * The Board is responsible for the playing field. It knows if a Location has a valid coordinate,
+ * if a field is a mine or not, and what are the valid neighbors of a given Location.
+ * @param width the Boards width. Must be > 1.
+ * @param height the Boards height. Must be > 1.
+ * @param mines mines can be passed in for test-setup. Normally only passed by apply in the companion. Not null and all
+ *              locations must be within the Boards bounds.
+ */
 class Board private[sceeper] (val width: Int, val height: Int, private[sceeper] val mines: Set[Location]):
   require(width > 1)
   require(height > 1)
@@ -22,6 +30,9 @@ class Board private[sceeper] (val width: Int, val height: Int, private[sceeper] 
   private val bottomRight = Location(width - 1, 0)
 
   def fieldCount: Int = width * height
+  
+  def hasBeenCleared(opened: Set[WaterField]): Boolean =
+    fieldCount - mines.size == opened.size
 
   /**
    * Tests, if the given location is within the Boards bounds
@@ -100,6 +111,9 @@ end Board
 
 object Board:
 
+  /**
+   * Creates a new Board with the given bounds and populates it with as many random mines as given by count. 
+   */
   def apply(width: Int, height: Int, countMines: Int): Board =
     new Board(width, height, randomMines(countMines, width, height))
 

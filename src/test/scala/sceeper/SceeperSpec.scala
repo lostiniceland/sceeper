@@ -55,13 +55,16 @@ class SweeperGameSpec extends AnyFlatSpec with Matchers {
 
 class SweeperStateSpec extends AnyFlatSpec with Matchers {
 
+  import sceeper.Action.*
+  import sceeper.ActionResult.*
+
   def fixture = new Sceeper(new Board(2, 2, Set(Location(0,0))))
 
   "Flagging a field" should "add the location to the internal state" in {
     val sut = fixture
     val toFlag = Location(0,0)
     sut.execute(ToggleFlag(toFlag)) should matchPattern { case Flagged => }
-    assert(sut.flaggedFields.contains(toFlag))
+    assert(sut.flagged.contains(toFlag))
   }
 
   it should "clear the state on removal" in {
@@ -69,7 +72,7 @@ class SweeperStateSpec extends AnyFlatSpec with Matchers {
     val toFlag = Location(0, 0)
     sut.execute(ToggleFlag(toFlag)) should matchPattern { case Flagged => }
     sut.execute(ToggleFlag(toFlag)) should matchPattern { case UnFlagged => }
-    assert(!sut.flaggedFields.contains(toFlag))
+    assert(!sut.flagged.contains(toFlag))
   }
 
   it should "after hitting the first mine, all actions must return GameOver" in {
@@ -79,42 +82,3 @@ class SweeperStateSpec extends AnyFlatSpec with Matchers {
     sut.execute(Open(Location(1,1))) should matchPattern { case GameOver(_) => }
   }
 }
-
-class SweeperXSpec extends AnyWordSpec with ScalaCheckPropertyChecks with should.Matchers {
-
-  // 0 1 B 1
-  // 0 1 1 1
-  // 0 1 1 1
-  // 1 2 B 1
-  // B 2 1 1
-  "A Board of 4x5" when {
-    
-    val mines = Set(Location(0, 4), Location(2, 0), Location(2, 3))
-    val board = new Board(4, 5, mines)
-    new Sceeper(board)
-
-    "mines at (0,4), (2,0) and (2,4)" should {
-      
-
-      val locations = Table(
-        ("x", "y", "expected"),
-        // first Column
-        (0, 0, OpenedField(Location(0,0), 0))),
-        (0, 1, Set(OpenedField(Location(0,0), 0))),
-        (0, 2, WaterField(0)),
-        (0, 3, WaterField(1)),
-        (0, 4, MineField),
-        
-      )
-
-      forAll(locations) { (x, y, expected) =>
-        s"should yield $expected when asked for $x,$y" in {
-          board.at(Location(x, y)) should equal(expected)
-        }
-      }
-    }
-  }
-
-}
-
-

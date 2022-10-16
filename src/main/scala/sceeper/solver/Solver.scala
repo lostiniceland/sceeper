@@ -1,5 +1,10 @@
 package sceeper.solver
 
-class Solver {
+import sceeper.Sceeper
+
+class Solver(val sceeper: Sceeper) {
+
+  def solve:Unit =
+    ???
 
 }
