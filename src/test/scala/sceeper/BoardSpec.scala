@@ -21,34 +21,35 @@ class BoardSpec extends AnyWordSpec with ScalaCheckPropertyChecks with should.Ma
     "mines at (0,4), (2,0) and (2,4)" should {
 
       val locations = Table(
-        ("x", "y", "expected"),
+        ("x", "y", "isMine", "proximityMines"),
         // first Column
-        (0, 0, WaterField(0)),
-        (0, 1, WaterField(0)),
-        (0, 2, WaterField(0)),
-        (0, 3, WaterField(1)),
-        (0, 4, MineField),
+        (0, 0, false, 0),
+        (0, 1, false, 0),
+        (0, 2, false, 0),
+        (0, 3, false, 1),
+        (0, 4, true, 0),
         // second Column
-        (1, 0, WaterField(1)),
-        (1, 1, WaterField(1)),
-        (1, 2, WaterField(1)),
-        (1, 3, WaterField(2)),
-        (1, 4, WaterField(2)),
+        (1, 0, false, 1),
+        (1, 1, false, 1),
+        (1, 2, false, 1),
+        (1, 3, false, 2),
+        (1, 4, false, 2),
         // third Column
-        (2, 0, MineField),
-        (2, 1, WaterField(1)),
-        (2, 2, WaterField(1)),
-        (2, 3, MineField),
-        (2, 4, WaterField(1)),
+        (2, 0, true, 0),
+        (2, 1, false, 1),
+        (2, 2, false, 1),
+        (2, 3, true, 0),
+        (2, 4, false, 1),
         // last Column
-        (3, 0, WaterField(1)),
-        (3, 1, WaterField(1)),
-        (3, 2, WaterField(1)),
-        (3, 3, WaterField(1)),
-        (3, 4, WaterField(1)),
+        (3, 0, false, 1),
+        (3, 1, false, 1),
+        (3, 2, false, 1),
+        (3, 3, false, 1),
+        (3, 4, false, 1),
       )
 
-      forAll(locations) { (x, y, expected) =>
+      forAll(locations) { (x, y, isMine, proximityMines) =>
+        val expected = if isMine then MineField else WaterField(proximityMines, Location(x,y))
         s"should yield $expected when asked for $x,$y" in {
           board.at(Location(x, y)) should equal(expected)
         }

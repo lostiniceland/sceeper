@@ -8,10 +8,19 @@ import sceeper.*
 
 import scala.collection.mutable
 
+/**
+ * Generates the board with the given dimensions and provides an lookup mechanism of [[WaterTile]]s.
+ * @param width how many tiles wide should the board be
+ * @param height how many tiles high should the board be
+ * @param mainClick the action triggered with a left-mouse-click
+ * @param secondaryClick the triggered with right-mouse-click
+ */
 class BoardPane(width: Int, height: Int, mainClick: (WaterTile, BoardPane) => Unit, secondaryClick: (WaterTile) => Unit ) extends GridPane {
 
-  val tiles = new mutable.HashMap[Location, WaterTile](width * height, 1.0)
-  val ref = this
+  styleClass.add("board")
+
+  private val tiles = new mutable.HashMap[Location, WaterTile](width * height, 1.0)
+  private val ref = this
 
   for x <- 0 until width
       y <- 0 until height
@@ -30,6 +39,14 @@ class BoardPane(width: Int, height: Int, mainClick: (WaterTile, BoardPane) => Un
     add(b, x, y)
 
 
+  /**
+   * A lookup from [[Location]] to the backing [[WaterTile]]
+   * @param location coordinates of the [[WaterTile]] to be returned
+   * @return
+   */
   def lookup(location: Location): WaterTile =
     tiles(location)
+
+  def showMines(mines: Set[Location]): Unit =
+    mines.foreach(lookup(_).mine())
 }
