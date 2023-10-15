@@ -100,12 +100,7 @@ class Board private[sceeper] (val width: Int, val height: Int, private[sceeper] 
    * @return Some(Location) when valid, otherwise None
    */
   private[this] def locationOf(x: Int, y: Int): Option[Location] =
-    try {
-      val l = Location(x, y)
-      Some(l).filter(isValid)
-    }catch {
-      _ => None
-    }
+    Location.of(x,y).filter(isValid)
 end Board
 
 
@@ -119,22 +114,46 @@ object Board:
 
   private val randomGenerator = Random()
 
-  private def nextRandomLocation(maximumX: Int, maximumY: Int): Location =
-    Location(randomGenerator.between(0, maximumX), randomGenerator.between(0, maximumY))
+  /**
+   * Generates a set of mines.
+   * Implementation uses more memory by populating an array with all possible fields and selecting randomly from the
+   * array. Another solution would be to generate completely random but this would need to filter out duplicates which
+   * can be time-consuming when having many mines (due to conflicts in the randomness)
+   * @param count amount of mines
+   * @param maxX width boundary
+   * @param maxY height boundary
+   * @param first the first location which has already been opened (and should not be a mine)
+   * @return
+   */
+  private def randomMines(count: Int, maxX: Int, maxY: Int, first: Location): Set[Location] =
+    def getRandomElement(seq: collection.mutable.Buffer[Location]): Location =
+      val element = seq(randomGenerator.nextInt(seq.length))
+      seq -= element
+      element
 
-  private def randomMines(count: Int, maxX: Int, maxY: Int): Set[Location] =
-    @tailrec
-    def replaceDuplicate(accumulator: Set[Location], element: Location): Set[Location] =
-      if accumulator.contains(element) then
-        // create a new Location, which again could be a dup, hence call this function again
-        replaceDuplicate(accumulator, Board.nextRandomLocation(maxX, maxY))
-      else
-        accumulator + element
+    val allMines =
+      (for
+        x <- 0 until maxX
+        y <- 0 until maxY
+      yield Location(x, y)).toBuffer.-=(first)
 
-    List.fill(count) {
-      Board.nextRandomLocation(maxX, maxY)
-    }.foldLeft(Set[Location]()) { (partialResult, element) =>
-      replaceDuplicate(partialResult, element)
-    }
+    (1 to count).map(_ => getRandomElement(allMines)).toSet
 
+//  private def nextRandomLocation(maximumX: Int, maximumY: Int): Location =
+//    Location(randomGenerator.between(0, maximumX), randomGenerator.between(0, maximumY))
+
+//  private def randomMines(count: Int, maxX: Int, maxY: Int): Set[Location] =
+//    @tailrec
+//    def replaceDuplicate(accumulator: Set[Location], element: Location): Set[Location] =
+//      if accumulator.contains(element) then
+//        // create a new Location, which again could be a dup, hence call this function again
+//        replaceDuplicate(accumulator, Board.nextRandomLocation(maxX, maxY))
+//      else
+//        accumulator + element
+//
+//    List.fill(count) {
+//      Board.nextRandomLocation(maxX, maxY)
+//    }.foldLeft(Set[Location]()) { (partialResult, element) =>
+//      replaceDuplicate(partialResult, element)
+//    }
 end Board

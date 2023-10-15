@@ -19,6 +19,7 @@ import java.nio.file.Files
 import scala.util.{Failure, Success}
 import sceeper.Action.*
 import sceeper.ActionResult.*
+import sceeper.solver.Solver
 
 enum Level:
   case Easy
@@ -59,6 +60,7 @@ object SceeperFX extends JFXApp3 with UncaughtExceptionHandler {
     stage = new JFXApp3.PrimaryStage {
       title.value = "Sceeper"
       icons.add(new Image("icon.png"))
+      // resizable needs to be enabled in order to have different field sizes
 //      resizable = false
       scene = new Scene {
         stylesheets.add("styles/default/style.css")
@@ -78,7 +80,10 @@ object SceeperFX extends JFXApp3 with UncaughtExceptionHandler {
                     case _ =>
               }
               val itemSolve: MenuItem = new MenuItem("Solve") {
-                onAction = _ => println("TODO solve")
+                onAction = _ => 
+                  // Trigger Solver
+                  Solver(game).solve()
+                  // Update UI
               }
               val itemQuit: MenuItem = new MenuItem("Quit") {
                 onAction = _ => Platform.exit()

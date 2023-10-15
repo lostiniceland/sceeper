@@ -12,7 +12,7 @@ import sceeper.fx.NewGameDialog.Result
 class NewGameDialog extends Dialog[Result] {
 
   title = "New Game"
-  headerText = "Specify the size and how many mines you want"
+  headerText = "Specify the size and difficulty"
 
   val okButton = new ButtonType("OK", ButtonData.OKDone)
   dialogPane().getButtonTypes.addAll(okButton, ButtonType.Cancel)
@@ -25,7 +25,7 @@ class NewGameDialog extends Dialog[Result] {
   private val level = new ChoiceBox[Level]{
     items = ObservableBuffer.from(Level.values)
   }
-  level.getSelectionModel.clearAndSelect(1)
+  level.getSelectionModel.clearAndSelect(0)
 
 
   private val grid = new GridPane() {
