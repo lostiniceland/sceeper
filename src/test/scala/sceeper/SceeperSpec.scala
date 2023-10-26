@@ -14,7 +14,6 @@ import scala.collection.immutable.*
 
 class SweeperGameSpec extends AnyFlatSpec with Matchers {
 
-  // FIXME TESTs überarbeiten
   "A Board" must "have unique mine locations" in {
     val board = Board(10, 10, 99)
     val duplicates = board.mines.groupBy(identity).collect { case (x, ys) if ys.toSeq.lengthCompare(1) > 0 => x }
@@ -25,7 +24,7 @@ class SweeperGameSpec extends AnyFlatSpec with Matchers {
     assertThrows[IllegalArgumentException] {
       val okMine = Location(0, 0)
       val misplacedMine = Location(20, 20)
-      new Board(10, 10, Set(okMine, misplacedMine))
+      new Board(10, 10, (first: Location) => Set(okMine, misplacedMine))
     }
   }
 
@@ -58,7 +57,7 @@ class SweeperStateSpec extends AnyFlatSpec with Matchers {
   import sceeper.Action.*
   import sceeper.ActionResult.*
 
-  def fixture = new Sceeper(new Board(2, 2, Set(Location(0,0))))
+  def fixture = new Sceeper(new Board(2, 2, (first: Location) => Set(Location(0,0))))
 
   "Flagging a field" should "add the location to the internal state" in {
     val sut = fixture

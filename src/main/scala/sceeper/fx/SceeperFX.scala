@@ -107,7 +107,7 @@ object SceeperFX extends JFXApp3 with UncaughtExceptionHandler {
     Platform.exit()
 
 
-  private def createGame(dimension: Dimension, level: Level) =
+  private def createGame(dimension: Dimension, level: Level): Sceeper =
     val size = dimension match
       case Dimension.Small => (5, 5)
       case Dimension.Normal => (10, 10)

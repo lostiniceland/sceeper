@@ -15,7 +15,7 @@ class SolverSpec extends AnyWordSpec {
   // B 2 1 1
   "A Board of 4x5 with mines at (0,4), (2,0) and (2,4)" when {
 
-    val mines = Set(Location(0, 4), Location(2, 0), Location(2, 3))
+    val mines = (first: Location) => Set(Location(0, 4), Location(2, 0), Location(2, 3))
     val board = new Board(4, 5, mines)
 
     "using the automatic solver" should {
