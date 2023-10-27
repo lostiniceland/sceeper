@@ -1,5 +1,7 @@
 package sceeper
 
+import sceeper.Board.randomMines
+
 import scala.annotation.tailrec
 import scala.util.Random
 
@@ -16,23 +18,26 @@ case object MineField extends Field
  * @param mines mines can be passed in for test-setup. Normally only passed by apply in the companion. Not null and all
  *              locations must be within the Boards bounds.
  */
-class Board private[sceeper] (val width: Int, val height: Int, private[sceeper] val mines: Set[Location]):
+class Board private[sceeper] (val width: Int, val height: Int, private[sceeper] val mineGenerator: Location => Set[Location]):
   require(width > 1)
   require(height > 1)
 
-  require(mines.nonEmpty)
-  require(mines.size < fieldCount)
-  require(mines.forall(l => isValid(l)))
-
+//  require(mines.nonEmpty)
+//  require(mines.size < fieldCount)
+//  require(mines.forall(l => isValid(l)))
+  private var initialized = false
+  private var _mines = Set.empty[Location]
   private val topLeft = Location(0, height - 1)
   private val bottomLeft = Location(0, 0)
   private val topRight = Location(width - 1, height - 1)
   private val bottomRight = Location(width - 1, 0)
 
+  def mines: Set[Location] = _mines
+
   def fieldCount: Int = width * height
   
   def hasBeenCleared(opened: Set[WaterField]): Boolean =
-    fieldCount - mines.size == opened.size
+    fieldCount - _mines.size == opened.size
 
   /**
    * Tests, if the given location is within the Boards bounds
@@ -49,10 +54,15 @@ class Board private[sceeper] (val width: Int, val height: Int, private[sceeper] 
    * @return MineField or WaterField
    */
   private[sceeper] def at(l: Location): Field =
-    if mines.contains(l) then
+
+    if !initialized then
+      _mines = mineGenerator(l)
+      initialized = true
+
+    if _mines.contains(l) then
       MineField
     else
-      WaterField(neighborsOf(l).count(l => mines.contains(l)), l)
+      WaterField(neighborsOf(l).count(l => _mines.contains(l)), l)
 
 
   private def isLeftEdge(l: Location): Boolean = l.x == 0
@@ -100,12 +110,7 @@ class Board private[sceeper] (val width: Int, val height: Int, private[sceeper] 
    * @return Some(Location) when valid, otherwise None
    */
   private[this] def locationOf(x: Int, y: Int): Option[Location] =
-    try {
-      val l = Location(x, y)
-      Some(l).filter(isValid)
-    }catch {
-      _ => None
-    }
+    Location.of(x,y).filter(isValid)
 end Board
 
 
@@ -119,22 +124,31 @@ object Board:
 
   private val randomGenerator = Random()
 
-  private def nextRandomLocation(maximumX: Int, maximumY: Int): Location =
-    Location(randomGenerator.between(0, maximumX), randomGenerator.between(0, maximumY))
+  /**
+   * Generates a set of mines.
+   * Implementation uses more memory by populating an array with all possible fields and selecting randomly from the
+   * array. Another solution would be to generate completely random but this would need to filter out duplicates which
+   * can be time-consuming when having many mines (due to conflicts in the randomness)
+   * @param count amount of mines
+   * @param maxX width boundary
+   * @param maxY height boundary
+   * @param first the first location which has already been opened (and should not be a mine)
+   * @return
+   */
+  private def randomMines(count: Int, maxX: Int, maxY: Int): Location => Set[Location] =
+    def getRandomElement(seq: collection.mutable.Buffer[Location]): Location =
+      val element = seq(randomGenerator.nextInt(seq.length))
+      seq -= element
+      element
 
-  private def randomMines(count: Int, maxX: Int, maxY: Int): Set[Location] =
-    @tailrec
-    def replaceDuplicate(accumulator: Set[Location], element: Location): Set[Location] =
-      if accumulator.contains(element) then
-        // create a new Location, which again could be a dup, hence call this function again
-        replaceDuplicate(accumulator, Board.nextRandomLocation(maxX, maxY))
-      else
-        accumulator + element
+    val allMines =
+      (for
+        x <- 0 until maxX
+        y <- 0 until maxY
+      yield Location(x, y)).toBuffer
 
-    List.fill(count) {
-      Board.nextRandomLocation(maxX, maxY)
-    }.foldLeft(Set[Location]()) { (partialResult, element) =>
-      replaceDuplicate(partialResult, element)
-    }
+    (first: Location) => (1 to count).map(_ => getRandomElement(allMines.-=(first))).toSet
 
 end Board
+
+

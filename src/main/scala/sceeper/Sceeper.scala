@@ -49,6 +49,8 @@ class Sceeper private[sceeper](val board: Board):
             flagged += l
             Flagged
 
+  def getOpened() : Set[WaterField] = opened
+  
   /**
    * Main Algorithm: recursively checks the neighbors of the given [[WaterField]], if those are also [[WaterField]]s.
    * All fields with 0 proximity-mines are safe to open up, and their neighbors are checked. The recursion stops, when

@@ -19,6 +19,7 @@ import java.nio.file.Files
 import scala.util.{Failure, Success}
 import sceeper.Action.*
 import sceeper.ActionResult.*
+import sceeper.solver.Solver
 
 enum Level:
   case Easy
@@ -45,6 +46,7 @@ object SceeperFX extends JFXApp3 with UncaughtExceptionHandler {
     case ActionResult.GameOver(mines) =>
       mines.foreach(m => boardPane.lookup(m).mine())
       boardPane.lookup(tile.location).triggeredMine()
+      boardPane.disable = true
     case ActionResult.Victory(mines) =>
       boardPane.showMines(mines)
       boardPane.disable = true
@@ -58,7 +60,8 @@ object SceeperFX extends JFXApp3 with UncaughtExceptionHandler {
     stage = new JFXApp3.PrimaryStage {
       title.value = "Sceeper"
       icons.add(new Image("icon.png"))
-      resizable = false
+      // resizable needs to be enabled in order to have different field sizes
+//      resizable = false
       scene = new Scene {
         stylesheets.add("styles/default/style.css")
         root = new BorderPane {
@@ -73,10 +76,14 @@ object SceeperFX extends JFXApp3 with UncaughtExceptionHandler {
                     case Some(Result(dimension,level)) =>
                       game = createGame(dimension, level)
                       bottom = new BoardPane(game.board.width, game.board.height, actionOpen, actionFlag )
+                      stage.sizeToScene()
                     case _ =>
               }
               val itemSolve: MenuItem = new MenuItem("Solve") {
-                onAction = _ => println("TODO solve")
+                onAction = _ => 
+                  // Trigger Solver
+                  Solver(game).solve()
+                  // Update UI
               }
               val itemQuit: MenuItem = new MenuItem("Quit") {
                 onAction = _ => Platform.exit()
@@ -100,7 +107,7 @@ object SceeperFX extends JFXApp3 with UncaughtExceptionHandler {
     Platform.exit()
 
 
-  def createGame(dimension: Dimension, level: Level) =
+  private def createGame(dimension: Dimension, level: Level): Sceeper =
     val size = dimension match
       case Dimension.Small => (5, 5)
       case Dimension.Normal => (10, 10)
