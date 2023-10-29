@@ -1,83 +1,124 @@
 package sceeper
 
-import java.security.KeyStore.TrustedCertificateEntry
+import sceeper.Game.New
+import sceeper.Location
+import sceeper.Sceeper.Action.Open
+
 import scala.annotation.tailrec
-import scala.util.{Random, Try}
+import scala.util.Random
+
+type Locations = Set[Location]
+
+case class Dimensions(width: Int, height: Int)
 
 
-enum Action:
-  case Open(location: Location)
-  case ToggleFlag(location: Location)
+sealed trait Field
+case class WaterField(proximityMines: Int, location: Location) extends Field
+case object MineField extends Field
 
-enum ActionResult:
-  case Opened(locations: Set[WaterField])
-  case Flagged
-  case UnFlagged
-  case Victory(mines: Set[Location])
-  case GameOver(mines: Set[Location])
+enum Game:
+  case New(width: Int, height: Int, countMines: Int)
+  case Running(opened: Set[WaterField], flagged: Locations, private[sceeper] val board: Board, private[sceeper] val mines: Locations)
+  case Won(mines: Locations, correctFlags: Locations, wrongFlags: Locations)
+  case Lost(mine: Location, otherMines: Locations, correctFlags: Locations, wrongFlags: Locations)
+
+object Game:
+
+  private[sceeper] def first(game: Game.New, firstOpened: Location): Game.Running =
+    val mines = randomMines(game.countMines, game.width, game.height, firstOpened)
+    val running: Game.Running = Game.Running(Set.empty, Set.empty, Board(game.width, game.height), mines)
+    val openedSurroundings = openSurroundings(running, WaterField(0, firstOpened)) // TODO
+    running.copy(opened = openedSurroundings)
 
 
-class Sceeper private[sceeper](val board: Board):
-
-  private[sceeper] var opened = Set[WaterField]()
-  private[sceeper] var flagged = Set[Location]()
-  private[this] var gameOver = false
-
-  def execute(action: Action): ActionResult =
-
-    import Action.*
-    import ActionResult.*
-
-    if(gameOver)
-      GameOver(board.mines)
+  private[sceeper] def flagged(game: Running, flag: Location): Game.Running =
+    if !game.flagged.contains(flag) then
+      game.copy(flagged = game.flagged + flag)
     else
-      action match
-        case Open(l) =>
-          board.at(l) match
-            case MineField => gameOver = true; GameOver(board.mines)
-            case w: WaterField =>
-              opened = opened ++ openSurroundings(w)
-              if board.hasBeenCleared(opened) then
-                Victory(board.mines)
-              else
-                Opened(opened)
-        case ToggleFlag(l) =>
-          if flagged.contains(l) then
-            flagged -= l
-            UnFlagged
-          else
-            flagged += l
-            Flagged
+      game.copy(flagged = game.flagged - flag)
 
-  def getOpened() : Set[WaterField] = opened
-  
+  private[sceeper] def opened(game: Running, open: WaterField): Game.Running =
+    val openedSurroundings = openSurroundings(game, open)
+    game.copy(opened = game.opened ++ openedSurroundings)
+
+  private[sceeper] def lost(game: Running, triggered: Location): Game.Lost =
+    val correctFlags = game.flagged // TODO
+    val wrongFlags = Set.empty[Location] // TODO
+    Lost(triggered, game.mines - triggered, correctFlags, wrongFlags)
+
+  private[sceeper] def won(game: Running): Game.Won =
+    val correctFlags = game.flagged // TODO
+    val wrongFlags = Set.empty[Location] // TODO
+    Won(game.mines, correctFlags, wrongFlags)
+
   /**
-   * Main Algorithm: recursively checks the neighbors of the given [[WaterField]], if those are also [[WaterField]]s.
-   * All fields with 0 proximity-mines are safe to open up, and their neighbors are checked. The recursion stops, when
-   * no more fields are found as input, or if they have already been visited.
-   * @param w starting [[WaterField]]
-   * @return all fields starting from [[w]] that are safe to open and their neighboring [[WaterFields]] with a proximity-mines > 0
+   * Checks if "at" the location is a [[MineField]] or [[WaterField]].
+   * In case of a WaterField, the number of mines on neighboring fields is returned.
+   *
+   * @param l the location to look at
+   * @return MineField or WaterField
    */
-  private def openSurroundings(w: WaterField): Set[WaterField] =
+  private[sceeper] def test(game: Game.Running, l: Location): Field =
+    if game.mines.contains(l) then
+      MineField
+    else
+      WaterField(game.board.neighborsOf(l).count(l => game.mines.contains(l)), l)
+
+  private def openSurroundings(game: Game.Running, w: WaterField): Set[WaterField] =
     @tailrec
     def open(locations: Set[Location], acc: List[WaterField], visited: Set[Location]): List[WaterField] =
-      if(locations.isEmpty || locations.subsetOf(visited))
+      if (locations.isEmpty || locations.subsetOf(visited))
         acc
       else
-        val waterLocations = locations.map(board.at).collect{case w: WaterField => w}
+        val waterLocations = locations.map(l => Game.test(game, l)).collect { case w: WaterField => w }
         open(
-          waterLocations.filter(w => w.proximityMines == 0).flatMap(w => board.neighborsOf(w.location)),
+          waterLocations.filter(w => w.proximityMines == 0).flatMap(w => game.board.neighborsOf(w.location)),
           acc ++ waterLocations,
           visited ++ locations)
 
-    open(board.neighborsOf(w.location), List(w), Set(w.location)).toSet
+    open(game.board.neighborsOf(w.location), List(w), Set(w.location)).toSet
+  private def randomMines(count: Int, maxX: Int, maxY: Int, firstOpened: Location): Locations =
+    val randomGenerator = Random()
 
-end Sceeper
+    def getRandomElement(seq: collection.mutable.Buffer[Location]): Location =
+      val element = seq(randomGenerator.nextInt(seq.length))
+      seq -= element
+      element
 
-object Sceeper:
+    val allMines =
+      (for
+        x <- 0 until maxX
+        y <- 0 until maxY
+      yield Location(x, y)).toBuffer
 
-  def apply(width: Int, height: Int, countMines: Int): Sceeper =
-    val board = Board(width, height, countMines)
-    new Sceeper(board)
+    (1 to count).map(_ => getRandomElement(allMines.-=(firstOpened))).toSet
 
-end Sceeper
+end Game
+
+object Sceeper {
+
+  enum Action:
+    case Open(location: Location)
+    case ToggleFlag(location: Location)
+
+  def newGame(width: Int, height: Int, countMines: Int): Game.New =
+    New(width, height, countMines)
+
+  def actionFirst(game: Game.New, action: Open): Game =
+    Game.first(game, action.location)
+
+  def action(game: Game.Running, action: Action): Game =
+    import Action.*
+
+    action match
+      case Open(l) =>
+        Game.test(game, l) match
+          case MineField => Game.lost(game, l)
+          case w: WaterField =>
+            val x = Game.opened(game, w)
+            if x.board.fieldCount - x.mines.size == game.opened.size then
+              Game.won(game)
+            else
+              x
+      case ToggleFlag(l) => Game.flagged(game, l)
+}

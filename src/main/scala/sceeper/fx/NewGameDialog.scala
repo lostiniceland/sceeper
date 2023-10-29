@@ -1,13 +1,12 @@
 package sceeper.fx
 
-import scalafx.geometry.Insets
-import scalafx.scene.control.ButtonBar.ButtonData
-import scalafx.scene.control.{ButtonType, ChoiceBox, Dialog, Label, TextField}
-import scalafx.scene.layout.GridPane
 import scalafx.collections.ObservableBuffer
-import sceeper.fx.Dimension
-import sceeper.fx.Level
+import scalafx.geometry.Insets
+import scalafx.scene.control.*
+import scalafx.scene.control.ButtonBar.ButtonData
+import scalafx.scene.layout.GridPane
 import sceeper.fx.NewGameDialog.Result
+import sceeper.fx.{Dimension, Level}
 
 class NewGameDialog extends Dialog[Result] {
 

@@ -5,21 +5,21 @@ import scalafx.Includes.*
 import scalafx.application.{JFXApp3, Platform}
 import scalafx.event.ActionEvent
 import scalafx.scene.Scene
-import scalafx.scene.control.Alert.AlertType
 import scalafx.scene.control.*
+import scalafx.scene.control.Alert.AlertType
+import scalafx.scene.image.Image
 import scalafx.scene.input.MouseButton.Secondary
 import scalafx.scene.input.MouseEvent
 import scalafx.scene.layout.{BorderPane, GridPane}
-import scalafx.scene.image.Image
-import sceeper.*
+import sceeper.Sceeper
+import sceeper.Sceeper.Action.*
+import sceeper.Game
+import sceeper.Sceeper.Action
 import sceeper.fx.WaterTile
 
 import java.lang.Thread.UncaughtExceptionHandler
 import java.nio.file.Files
 import scala.util.{Failure, Success}
-import sceeper.Action.*
-import sceeper.ActionResult.*
-import sceeper.solver.Solver
 
 enum Level:
   case Easy
@@ -38,23 +38,47 @@ object SceeperFX extends JFXApp3 with UncaughtExceptionHandler {
 
   Thread.setDefaultUncaughtExceptionHandler(this)
 
-  private var game = createGame(Dimension.Normal, Level.Normal)
+  private var game: Game = createGame(Dimension.Normal, Level.Normal)
 
-  private val actionOpen = (tile: WaterTile, boardPane: BoardPane) => game.execute(Action.Open(tile.location)) match
-    case ActionResult.Opened(openedFields) =>
-      openedFields.foreach( o => boardPane.lookup(o.location).opened(o.proximityMines))
-    case ActionResult.GameOver(mines) =>
-      mines.foreach(m => boardPane.lookup(m).mine())
-      boardPane.lookup(tile.location).triggeredMine()
-      boardPane.disable = true
-    case ActionResult.Victory(mines) =>
-      boardPane.showMines(mines)
-      boardPane.disable = true
-    case _ =>
+  private def updateState(updated: Game, f: () => Unit): Unit =
+    this.game = updated
+    f()
 
-  private val actionFlag = (tile: WaterTile) => game.execute(ToggleFlag(tile.location)) match
-    case ActionResult.Flagged => tile.flag()
-    case ActionResult.UnFlagged => tile.unflag()
+
+  private val actionOpen = (tile: WaterTile, boardPane: BoardPane) =>
+
+    val r = game match
+      case g: Game.New => Sceeper.actionFirst(g, Action.Open(tile.location))
+      case g: Game.Running => Sceeper.action(g, Action.Open(tile.location))
+
+    r match
+      case g: Game.Running => updateState(g, () => g.opened.foreach(o => boardPane.lookup(o.location).opened(o.proximityMines)))
+      case g: Game.Lost => updateState(g, () => {
+        g.otherMines.foreach(m => boardPane.lookup(m).mine())
+        boardPane.lookup(g.mine).triggeredMine()
+        boardPane.disable = true
+      })
+      case g: Game.Won => updateState(g, () => {
+        boardPane.showMines(g.mines)
+        boardPane.disable = true
+      })
+      case _ =>
+
+
+  private val actionFlag = (tile: WaterTile) =>
+
+    val g = game match
+      case g: Game.Running => Sceeper.action(g, ToggleFlag(tile.location))
+      case _ => game
+    updateState(g, () => {
+      g match
+        case g: Game.Running =>
+          if g.flagged.contains(tile.location) then
+            tile.flag()
+          else
+            tile.unflag()
+        case _ => ()
+      })
 
   override def start(): Unit =
     stage = new JFXApp3.PrimaryStage {
@@ -74,15 +98,18 @@ object SceeperFX extends JFXApp3 with UncaughtExceptionHandler {
                   import NewGameDialog.Result
                   result match
                     case Some(Result(dimension,level)) =>
-                      game = createGame(dimension, level)
-                      bottom = new BoardPane(game.board.width, game.board.height, actionOpen, actionFlag )
-                      stage.sizeToScene()
+                      val newgame = createGame(dimension, level)
+                      updateState(newgame, () => {
+                        bottom = new BoardPane(newgame.width, newgame.height, actionOpen, actionFlag )
+                        stage.sizeToScene()
+                      })
                     case _ =>
               }
               val itemSolve: MenuItem = new MenuItem("Solve") {
-                onAction = _ => 
+                onAction = _ =>
+                  println("foo")
                   // Trigger Solver
-                  Solver(game).solve()
+//                  Solver(game).solve()
                   // Update UI
               }
               val itemQuit: MenuItem = new MenuItem("Quit") {
@@ -92,7 +119,7 @@ object SceeperFX extends JFXApp3 with UncaughtExceptionHandler {
             }
             menus = List(gameMenu)
           }
-          bottom = new BoardPane(game.board.width, game.board.height, actionOpen, actionFlag )
+          bottom = new BoardPane(game.asInstanceOf[Game.New].width, game.asInstanceOf[Game.New].height, actionOpen, actionFlag )
         }
       }
     }
@@ -107,7 +134,7 @@ object SceeperFX extends JFXApp3 with UncaughtExceptionHandler {
     Platform.exit()
 
 
-  private def createGame(dimension: Dimension, level: Level): Sceeper =
+  private def createGame(dimension: Dimension, level: Level): Game.New =
     val size = dimension match
       case Dimension.Small => (5, 5)
       case Dimension.Normal => (10, 10)
@@ -121,7 +148,7 @@ object SceeperFX extends JFXApp3 with UncaughtExceptionHandler {
       case Level.Normal => fieldCount * 0.2
       case Level.Hard => fieldCount * 0.5
 
-    Sceeper(size._1, size._2, minesCount.toInt)
+    Sceeper.newGame(size._1, size._2, minesCount.toInt)
 }
 
 
